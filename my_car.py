@@ -79,13 +79,13 @@ class Plot(pg.PlotWidget):
 				self.accel_distance = self.v_0*self.t_yellow + self.a_max*self.t_yellow*self.t_yellow/float(2)
 
 		if self.a_min != 0:		
-			a = np.empty([-self.a_min*33, ])
-			b = np.empty([-self.a_min*33, ])
-			num = 0
-			for i in range(self.a_min*33, 0):
-				num = num + self.a_min/float(99)
-				a[i] = num
-				b[i] = -self.v_0*self.v_0/float(2*num)
+			X = np.empty([-self.a_min*100, ])
+			Y = np.empty([-self.a_min*100, ])
+			a = 0
+			for i in range(100*self.a_min, 0):
+				a = a - 1/100
+				X[i] = a
+				Y[i] = -self.v_0*self.v_0/float(2*a)
 		else:
 			pass
 
@@ -93,7 +93,7 @@ class Plot(pg.PlotWidget):
 		#print b
 		p1 = self.plot(x = np.array([0, self.a_max]), y = np.array([0, self.accel_distance]), pen = 'b')
 		try:
-			p2 = self.getPlotItem().addItem(pg.PlotCurveItem(x = a, y = b, pen = 'y'))
+			p2 = self.getPlotItem().addItem(pg.PlotCurveItem(x = X, y = Y, pen = 'y'))
 		except:
 			pass
 		
@@ -119,6 +119,9 @@ class Plot(pg.PlotWidget):
 
 		l0 = self.getPlotItem().addLine(x = 0, movable = False, pen = {'color': "w"})
 		l1 = self.getPlotItem().addLine(y = 0, movable = False, pen = {'color': "w"})
+		self.enableAutoRange('y', 1)
+		self.enableAutoRange('x', 1)
+
 
 	def set_position_label(self, arg):
 		self.label = arg
@@ -141,7 +144,7 @@ class Dialog(QtGui.QDialog):
 	def __init__(self, parent=None):
 		super(Dialog, self).__init__(parent)
 
-		self.setWindowTitle("Color Scheme")
+		self.setWindowTitle("Coloring and info")
 		self.setWindowIcon(QtGui.QIcon('car.png'))
 
 		self.redlabel = QtGui.QLabel("Red")
@@ -173,8 +176,9 @@ class Dialog(QtGui.QDialog):
 		self.yellowdescription = QtGui.QLabel('Graph in case of deceleration')
 		self.bluedescription = QtGui.QLabel('Graph is case of acceleration')
 
-		self.infolabel = QtGui.QLabel('*Note that you can use mouse right button in order to make some corrections to the graph*')
-		self.infolabel2 = QtGui.QLabel('	*Also you can use mouse scroller (middle button) in order to zoom-in or -out*')
+		self.infolabel = QtGui.QLabel('\n\nYou can use mouse right button in order to make some corrections to the graph.\nAlso you can use mouse scroller (middle button) in order to zoom-in or -out')
+		self.aboutlabel =QtGui.QLabel('\n\n\nTigran Sedrakyan\nAmerican University of Armenia\nSmart Car Graphing App, version 0.1 from 11/27/2016\nAll copyrights are reserved')
+		self.aboutlabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
 		self.layout = QtGui.QGridLayout(self)
 		self.layout.addWidget(self.whitelabel, 1, 1)
@@ -192,7 +196,7 @@ class Dialog(QtGui.QDialog):
 		self.layout.addWidget(self.yellowdescription, 6, 2)
 		self.layout.addWidget(self.bluedescription, 7, 2)
 		self.layout.addWidget(self.infolabel, 8, 1, 1, 2)
-		self.layout.addWidget(self.infolabel2, 9, 1, 1, 2)
+		self.layout.addWidget(self.aboutlabel, 15, 1, 1, 2)
 
 
 class Window(QWidget):
@@ -209,7 +213,7 @@ class Window(QWidget):
 		btn = QtGui.QPushButton("Exit", self)
 		btn.clicked.connect(self.close_application)
 
-		btn2 = QtGui.QPushButton("Color Scheme...", self)
+		btn2 = QtGui.QPushButton("Coloring and info", self)
 		btn2.clicked.connect(self.open_dialog)
 
 
