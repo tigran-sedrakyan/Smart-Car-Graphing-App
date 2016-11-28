@@ -3,16 +3,16 @@ from PyQt4.QtGui import *
 from pyqtgraph.Qt import QtGui, QtCore
 import numpy as np
 import pyqtgraph as pg
-
-# add state_label
+from decimal import *
 
 class Plot(pg.PlotWidget):
 
 	def __init__(self):
 		super(Plot, self).__init__()
-		self.resize(660,600)
-		self.setTitle('Acceleration-distance dependency graph')
+
 		pg.setConfigOptions(antialias=True)
+
+		self.setTitle('Acceleration-distance dependency graph')
 		self.enableAutoRange('y', 1)
 		self.enableAutoRange('x', 1)
 		self.showGrid(x=True, y=True)
@@ -36,67 +36,82 @@ class Plot(pg.PlotWidget):
 		self.a_max = 0
 		self.a_min = 0
 
-		self.stop_distance = 0
-		self.t_limit = 0
-		self.accel_distance = 0
-
 		self.getPlotItem().setLabel('left', text = 'Distance (m)')
 		self.getPlotItem().setLabel('bottom', text = 'Acceleration (m/s^2)')
 		
 	def set_distance(self, D):
-		self.distance = int(D)
+		self.distance = float(D)
 
 	def set_length(self, L):
-		self.length = int(L)
+		self.length = float(L)
 
 	def set_t_yellow(self, time):
-		self.t_yellow = int(time)
+		self.t_yellow = float(time)
 
 	def set_v_0(self, velocity):
-		self.v_0 = int(velocity)*1000/float(3600)
+		self.v_0 = float(velocity)*1000/float(3600)
 	
 	def set_v_limit(self, v_limit):
-		self.v_limit = int(v_limit)*1000/float(3600)
+		self.v_limit = float(v_limit)*1000/float(3600)
 
 	def set_a_max(self, acceleration):
-		self.a_max = int(acceleration)
+		self.a_max = float(acceleration)
 
 	def set_a_min(self, acceleration):
-		if (int(acceleration) < 0):
-			self.a_min = int(acceleration)
+		if (float(acceleration) < 0):
+			self.a_min = float(acceleration)
 		else:
-			self.a_min = -int(acceleration)
+			self.a_min = -float(acceleration)
 
 	def update_plot(self):
-		if self.a_max != 0 and self.a_min!=0 and self.v_limit != 0 and self.t_yellow != 0:
-			
-			self.stop_distance = -self.v_0*self.v_0/float(2*self.a_min)
-			self.t_limit = (self.v_limit - self.v_0)/float(self.a_max)
+		
+		#Default axes
 
-			if self.t_limit < self.t_yellow:
-				self.accel_distance = self.v_0*self.t_limit + self.a_max*self.t_limit*self.t_limit/float(2) + self.v_limit*(self.t_yellow - self.t_limit)
+		l0 = self.getPlotItem().addLine(x = 0, movable = False, pen = {'color': "w"})
+		l1 = self.getPlotItem().addLine(y = 0, movable = False, pen = {'color': "w"})
+
+		#Graph in case of acceleration
+
+		r1 = int(100*self.a_max)+1
+		A_max = np.empty([r1, ])
+		Accel_distance = np.empty([r1, ])
+		a_max = 0
+		for i in range(0, r1):
+			A_max[i] = a_max
+			if a_max == 0:
+				Accel_distance[0] = self.v_0*self.t_yellow
 			else:
-				self.accel_distance = self.v_0*self.t_yellow + self.a_max*self.t_yellow*self.t_yellow/float(2)
+				self.t_limit = (self.v_limit - self.v_0)/float(a_max)
+				if self.t_limit < self.t_yellow:
+					Accel_distance[i] = self.v_0*self.t_limit + a_max*self.t_limit*self.t_limit/float(2) + self.v_limit*(self.t_yellow - self.t_limit)
+				else:
+					Accel_distance[i] = self.v_0*self.t_yellow + a_max*self.t_yellow*self.t_yellow/float(2)
+			a_max = a_max + 1/100
 
-		if self.a_min != 0:		
-			X = np.empty([-self.a_min*100, ])
-			Y = np.empty([-self.a_min*100, ])
-			a = 0
-			for i in range(100*self.a_min, 0):
-				a = a - 1/100
-				X[i] = a
-				Y[i] = -self.v_0*self.v_0/float(2*a)
+
+		p1 = self.plot(x = A_max, y = Accel_distance, pen = 'b')
+
+		#Graph in case of deceleration
+
+		if self.a_min != 0:
+			r2 = int(self.a_min*100)
+			A_min = np.empty([-self.a_min*100, ])
+			Stop_distance = np.empty([-self.a_min*100, ])
+			a_min = 0
+			for i in range(r2, 0):
+				a_min = a_min - 1/100
+				A_min[i] = a_min
+				Stop_distance[i] = -self.v_0*self.v_0/float(2*a_min)
 		else:
 			pass
 
-		#print a
-		#print b
-		p1 = self.plot(x = np.array([0, self.a_max]), y = np.array([0, self.accel_distance]), pen = 'b')
 		try:
-			p2 = self.getPlotItem().addItem(pg.PlotCurveItem(x = X, y = Y, pen = 'y'))
+			p2 = self.plot(x = A_min, y = Stop_distance, pen = 'y')
 		except:
 			pass
 		
+		#Some infinite lines
+
 		if self.distance != 0:
 			l2 = self.getPlotItem().addLine(y = self.distance, movable = True, pen = "r")
 		else:
@@ -117,28 +132,17 @@ class Plot(pg.PlotWidget):
 		else:
 			pass
 
-		l0 = self.getPlotItem().addLine(x = 0, movable = False, pen = {'color': "w"})
-		l1 = self.getPlotItem().addLine(y = 0, movable = False, pen = {'color': "w"})
-		self.enableAutoRange('y', 1)
-		self.enableAutoRange('x', 1)
+		#Graphing options
 
+		self.enableAutoRange('y', 0.1)
+		self.enableAutoRange('x', 1)
 
 	def set_position_label(self, arg):
 		self.label = arg
 
 	def mouseMoved(self, evt):
-  		mousePoint = self.getPlotItem().vb.mapSceneToView(evt[0])
-  		self.label.setText("<span style='font-size: 15pt'> Coordinates: a = %0.2f (m/s^2), <span style='font-size: 15pt'> x = %0.2f (m)</span>" % (mousePoint.x(), mousePoint.y()))
-
-
-	#def return_state(self):
-	#	if self.accel_distance > self.distance+self.length:
-	#		return "Accelerating"
-	#	elif self.stop_distance < self.distance:
-	#		return "Decelerating"
-	#	else:
-	#		return "!ALERT! A collision is unavoidable! Preaparing airbags!"
-
+		mousePoint = self.getPlotItem().vb.mapSceneToView(evt[0])
+		self.label.setText("<span style='font-size: 15pt'> Coordinates: a = %0.2f (m/s^2), <span style='font-size: 15pt'> x = %0.2f (m)</span>" % (mousePoint.x(), mousePoint.y()))
 
 class Dialog(QtGui.QDialog):
 	def __init__(self, parent=None):
@@ -168,7 +172,7 @@ class Dialog(QtGui.QDialog):
 		self.whitelabel = QtGui.QLabel("White")
 		self.whitelabel.setStyleSheet("QLabel { color : black}")
 
-		self.whitedescription = QtGui.QLabel('x-axis and y-axis')
+		self.whitedescription = QtGui.QLabel('Acceleration and Distance axes')
 		self.reddescription = QtGui.QLabel('Distance from the intersection(line is movable)')
 		self.greendescription = QtGui.QLabel('Distance from the intersection + Length of the intersection (line is movable)')
 		self.violetdescription = QtGui.QLabel('Minimum acceleration of the car')
@@ -177,7 +181,7 @@ class Dialog(QtGui.QDialog):
 		self.bluedescription = QtGui.QLabel('Graph is case of acceleration')
 
 		self.infolabel = QtGui.QLabel('\n\nYou can use mouse right button in order to make some corrections to the graph.\nAlso you can use mouse scroller (middle button) in order to zoom-in or -out')
-		self.aboutlabel =QtGui.QLabel('\n\n\nTigran Sedrakyan\nAmerican University of Armenia\nSmart Car Graphing App, version 0.1 from 11/27/2016\nAll copyrights are reserved')
+		self.aboutlabel =QtGui.QLabel('\n\nTigran Sedrakyan\nAmerican University of Armenia\nSmart Car Graphing App, version 0.1.1 from 11/28/2016\nAll rights are reserved')
 		self.aboutlabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
 		self.layout = QtGui.QGridLayout(self)
@@ -202,14 +206,13 @@ class Dialog(QtGui.QDialog):
 class Window(QWidget):
 	def __init__(self):
 		super(Window, self).__init__()
-		self.plot = Plot()
+		
 		self.setWindowTitle('Smart Car App')
 		self.setWindowIcon(QtGui.QIcon('car.png'))
-		#self.state_label = QtGui.QLabel(self)
-		#self.status = self.update_status()
-		#print (self.status)
+		
 		self.dialog = Dialog()
-
+		plot = Plot()
+		
 		btn = QtGui.QPushButton("Exit", self)
 		btn.clicked.connect(self.close_application)
 
@@ -218,78 +221,97 @@ class Window(QWidget):
 
 
 		timeEdit = QtGui.QLineEdit(self)
-		timeEdit.setPlaceholderText('Ty (s)');
-		timeEdit.setValidator(QtGui.QIntValidator(2,4))
-		timeEdit.textChanged.connect(lambda: self.plot.clear())
-		timeEdit.textChanged.connect(lambda: self.plot.set_t_yellow(timeEdit.text()))
-		timeEdit.textChanged.connect(self.plot.update_plot)
-		timeEdit.textChanged.connect(self.plot.show)
+		timeEdit.setPlaceholderText('Ty');
+		timeEdit.setValidator(QtGui.QDoubleValidator(2.00,4.00, 2))
+		timeEdit.textChanged.connect(lambda: plot.clear())
+		timeEdit.textChanged.connect(lambda: plot.set_t_yellow(timeEdit.text()))
+		timeEdit.textChanged.connect(plot.update_plot)
+		timeEdit.textChanged.connect(plot.show)
 
 		a_maxEdit = QtGui.QLineEdit(self)
-		a_maxEdit.setPlaceholderText('Maximum Acceleration (m/s^2)');
-		a_maxEdit.setValidator(QtGui.QIntValidator(0,3))
-		a_maxEdit.textChanged.connect(lambda: self.plot.clear())
-		a_maxEdit.textChanged.connect(lambda: self.plot.set_a_max(a_maxEdit.text()))
-		a_maxEdit.textChanged.connect(self.plot.update_plot)
-		a_maxEdit.textChanged.connect(self.plot.show)
+		a_maxEdit.setPlaceholderText('a_max');
+		a_maxEdit.setValidator(QtGui.QDoubleValidator(0.00,3.00, 2))
+		a_maxEdit.textChanged.connect(lambda: plot.clear())
+		a_maxEdit.textChanged.connect(lambda: plot.set_a_max(a_maxEdit.text()))
+		a_maxEdit.textChanged.connect(plot.update_plot)
+		a_maxEdit.textChanged.connect(plot.show)
 
 		a_minEdit = QtGui.QLineEdit(self)
-		a_minEdit.setPlaceholderText('Minimum Acceleration (m/s^2)');
-		a_minEdit.setValidator(QtGui.QIntValidator(-3,0))
-		a_minEdit.textChanged.connect(lambda: self.plot.clear())
-		a_minEdit.textChanged.connect(lambda: self.plot.set_a_min(a_minEdit.text()))
-		a_minEdit.textChanged.connect(self.plot.update_plot)
-		a_minEdit.textChanged.connect(self.plot.show)
+		a_minEdit.setPlaceholderText('a_min');
+		a_minEdit.setValidator(QtGui.QDoubleValidator(-3.00,0.00, 2))
+		a_minEdit.textChanged.connect(lambda: plot.clear())
+		a_minEdit.textChanged.connect(lambda: plot.set_a_min(a_minEdit.text()))
+		a_minEdit.textChanged.connect(plot.update_plot)
+		a_minEdit.textChanged.connect(plot.show)
 
 		v_0Edit = QtGui.QLineEdit(self)
-		v_0Edit.setPlaceholderText('V0 (km/h)');
-		v_0Edit.setValidator(QtGui.QIntValidator(20,80))
-		v_0Edit.textChanged.connect(lambda: self.plot.clear())
-		v_0Edit.textChanged.connect(lambda: self.plot.set_v_0(v_0Edit.text()))
-		v_0Edit.textChanged.connect(self.plot.update_plot)
-		v_0Edit.textChanged.connect(self.plot.show)
+		v_0Edit.setPlaceholderText('V0');
+		v_0Edit.setValidator(QtGui.QDoubleValidator(20.00,80.00, 2))
+		v_0Edit.textChanged.connect(lambda: plot.clear())
+		v_0Edit.textChanged.connect(lambda: plot.set_v_0(v_0Edit.text()))
+		v_0Edit.textChanged.connect(plot.update_plot)
+		v_0Edit.textChanged.connect(plot.show)
 
 		v_limitEdit = QtGui.QLineEdit(self)
-		v_limitEdit.setPlaceholderText('Speed Limit (km/h)');
-		v_limitEdit.setValidator(QtGui.QIntValidator(40,90))
-		v_limitEdit.textChanged.connect(lambda: self.plot.clear())
-		v_limitEdit.textChanged.connect(lambda: self.plot.set_v_limit(v_limitEdit.text()))
-		v_limitEdit.textChanged.connect(self.plot.update_plot)
-		v_limitEdit.textChanged.connect(self.plot.show)
+		v_limitEdit.setPlaceholderText('V_limit');
+		v_limitEdit.setValidator(QtGui.QDoubleValidator(40.00,90.00, 2))
+		v_limitEdit.textChanged.connect(lambda: plot.clear())
+		v_limitEdit.textChanged.connect(lambda: plot.set_v_limit(v_limitEdit.text()))
+		v_limitEdit.textChanged.connect(plot.update_plot)
+		v_limitEdit.textChanged.connect(plot.show)
+
 
 		distanceEdit = QtGui.QLineEdit(self)
-		distanceEdit.setPlaceholderText('Distance from the intersection (m)');
-		distanceEdit.setValidator(QtGui.QIntValidator(7,50))
-		distanceEdit.textChanged.connect(lambda: self.plot.clear())
-		distanceEdit.textChanged.connect(lambda: self.plot.set_distance(distanceEdit.text()))
-		distanceEdit.textChanged.connect(self.plot.update_plot)
-		distanceEdit.textChanged.connect(self.plot.show)
+		distanceEdit.setPlaceholderText('D');
+		distanceEdit.setValidator(QtGui.QDoubleValidator(7.00,50.00, 2))
+		distanceEdit.textChanged.connect(lambda: plot.clear())
+		distanceEdit.textChanged.connect(lambda: plot.set_distance(distanceEdit.text()))
+		distanceEdit.textChanged.connect(plot.update_plot)
+		distanceEdit.textChanged.connect(plot.show)
 
 		lengthEdit = QtGui.QLineEdit(self)
-		lengthEdit.setPlaceholderText('Length of the intersection (m)');
-		lengthEdit.setValidator(QtGui.QIntValidator(7,20))
-		lengthEdit.textChanged.connect(lambda: self.plot.clear())
-		lengthEdit.textChanged.connect(lambda: self.plot.set_length(lengthEdit.text()))
-		lengthEdit.textChanged.connect(self.plot.update_plot)
-		lengthEdit.textChanged.connect(self.plot.show)
+		lengthEdit.setPlaceholderText('L');
+		lengthEdit.setValidator(QtGui.QDoubleValidator(7.00,20.00, 2))
+		lengthEdit.textChanged.connect(lambda: plot.clear())
+		lengthEdit.textChanged.connect(lambda: plot.set_length(lengthEdit.text()))
+		lengthEdit.textChanged.connect(plot.update_plot)
+		lengthEdit.textChanged.connect(plot.show)
 
 		position_label = QLabel()
 		position_label.setText("<span style='font-size: 15pt, '>Coordinates: a=0 (m/s^2),   <span style='', 'font-size: 15pt'>x=0 (m)</span>")
-		self.plot.set_position_label(position_label)
+		plot.set_position_label(position_label)
+
+		distanceLabel = QtGui.QLabel('Distance from the intersection (m):')
+		lengthLabel = QtGui.QLabel('Length of the intersection (m):')
+		a_minLabel = QtGui.QLabel('Minimum acceleration of the car (m/s^2):')
+		a_maxLabel = QtGui.QLabel('Maximum acceleration of the car (m/s^2):')
+		timeLabel = QtGui.QLabel('Time of the yellow light (s):')
+		v_0Label = QtGui.QLabel('Current velocity (km/h):')
+		v_limitLabel = QtGui.QLabel('Speed Limit (km/h):')
+
 
 		layout = QtGui.QGridLayout(self)
-		layout.addWidget(distanceEdit, 1, 2)
-		layout.addWidget(lengthEdit, 2, 2)
-		layout.addWidget(a_maxEdit, 3, 2)
-		layout.addWidget(a_minEdit, 4, 2)
-		layout.addWidget(timeEdit, 5, 2)
-		layout.addWidget(v_0Edit, 6, 2)
-		layout.addWidget(v_limitEdit, 7, 2)
+		layout.addWidget(distanceLabel, 1, 2)
+		layout.addWidget(lengthLabel, 2, 2)
+		layout.addWidget(a_maxLabel, 3, 2)
+		layout.addWidget(a_minLabel, 4, 2)
+		layout.addWidget(timeLabel, 5, 2)
+		layout.addWidget(v_0Label, 6, 2)
+		layout.addWidget(v_limitLabel, 7, 2)
+		
+		layout.addWidget(distanceEdit, 1, 3)
+		layout.addWidget(lengthEdit, 2, 3)
+		layout.addWidget(a_maxEdit, 3, 3)
+		layout.addWidget(a_minEdit, 4, 3)
+		layout.addWidget(timeEdit, 5, 3)
+		layout.addWidget(v_0Edit, 6, 3)
+		layout.addWidget(v_limitEdit, 7, 3)
+		
+		layout.addWidget(btn2, 10, 2, 1, 2)
+		layout.addWidget(btn, 11, 2, 1, 2)
+
 		layout.addWidget(position_label, 11, 1)
-		layout.addWidget(btn2, 10, 2)
-		#layout.addWidget(self.state_label, 8, 2)
-		layout.addWidget(self.plot, 1, 1, 10, 1)
-		layout.addWidget(btn, 11, 2)
+		layout.addWidget(plot, 1, 1, 10, 1)
 		
 		self.resize(900, 550)
 		self.show()
@@ -306,8 +328,6 @@ class Window(QWidget):
 	def open_dialog(self):
 		self.dialog.exec_()
 
-	#def update_status(self):
-		#return self.plot.return_state()
 
 
 def run():
