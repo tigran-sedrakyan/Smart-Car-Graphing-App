@@ -70,6 +70,29 @@ class Plot(pg.PlotWidget):
 		l0 = self.getPlotItem().addLine(x = 0, movable = False, pen = {'color': "w"})
 		l1 = self.getPlotItem().addLine(y = 0, movable = False, pen = {'color': "w"})
 
+		#Some infinite lines
+
+		if self.distance != 0:
+			l2 = self.getPlotItem().addLine(y = self.distance, movable = True, pen = "r")
+		else:
+			pass
+
+		if self.length != 0:	
+			l3 = self.getPlotItem().addLine(y = self.length+self.distance, movable = True, pen = "g")
+		else:
+			pass
+
+		if self.a_min != 0:
+			l4 = self.getPlotItem().addLine(x = self.a_min, movable = False, pen = {'color': "m"})
+		else:
+			pass
+
+		if self.a_max != 0:
+			l5 = self.getPlotItem().addLine(x = self.a_max, movable = False, pen = {'color': "c"})
+		else:
+			pass
+
+
 		#Graph in case of acceleration
 
 		r1 = int(100*self.a_max)+1
@@ -81,11 +104,14 @@ class Plot(pg.PlotWidget):
 			if a_max == 0:
 				Accel_distance[0] = self.v_0*self.t_yellow
 			else:
-				self.t_limit = (self.v_limit - self.v_0)/float(a_max)
-				if self.t_limit < self.t_yellow:
-					Accel_distance[i] = self.v_0*self.t_limit + a_max*self.t_limit*self.t_limit/float(2) + self.v_limit*(self.t_yellow - self.t_limit)
+				if self.v_0 > self.v_limit:
+					Accel_distance[i] = self.v_0*self.t_yellow
 				else:
-					Accel_distance[i] = self.v_0*self.t_yellow + a_max*self.t_yellow*self.t_yellow/float(2)
+					self.t_limit = (self.v_limit - self.v_0)/float(a_max)
+					if self.t_limit < self.t_yellow:
+						Accel_distance[i] = self.v_0*self.t_limit + a_max*self.t_limit*self.t_limit/float(2) + self.v_limit*(self.t_yellow - self.t_limit)
+					else:
+						Accel_distance[i] = self.v_0*self.t_yellow + a_max*self.t_yellow*self.t_yellow/float(2)
 			a_max = a_max + 1/100
 
 
@@ -108,28 +134,6 @@ class Plot(pg.PlotWidget):
 		try:
 			p2 = self.plot(x = A_min, y = Stop_distance, pen = 'y')
 		except:
-			pass
-		
-		#Some infinite lines
-
-		if self.distance != 0:
-			l2 = self.getPlotItem().addLine(y = self.distance, movable = True, pen = "r")
-		else:
-			pass
-
-		if self.length != 0:	
-			l3 = self.getPlotItem().addLine(y = self.length+self.distance, movable = True, pen = "g")
-		else:
-			pass
-
-		if self.a_min != 0:
-			l4 = self.getPlotItem().addLine(x = self.a_min, movable = False, pen = {'color': "m"})
-		else:
-			pass
-
-		if self.a_max != 0:
-			l5 = self.getPlotItem().addLine(x = self.a_max, movable = False, pen = {'color': "c"})
-		else:
 			pass
 
 		#Graphing options
@@ -181,7 +185,7 @@ class Dialog(QtGui.QDialog):
 		self.bluedescription = QtGui.QLabel('Graph is case of acceleration')
 
 		self.infolabel = QtGui.QLabel('\n\nYou can use mouse right button in order to make some corrections to the graph.\nAlso you can use mouse scroller (middle button) in order to zoom-in or -out')
-		self.aboutlabel =QtGui.QLabel('\n\nTigran Sedrakyan\nAmerican University of Armenia\nSmart Car Graphing App, version 0.1.1 from 11/28/2016\nAll rights are reserved')
+		self.aboutlabel =QtGui.QLabel('\n\nTigran Sedrakyan\nAmerican University of Armenia\nSmart Car Graphing App, version 0.2 from 11/29/2016\nAll rights are reserved')
 		self.aboutlabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
 		self.layout = QtGui.QGridLayout(self)
